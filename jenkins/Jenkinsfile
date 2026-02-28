@@ -2,56 +2,76 @@
 pipeline {
     agent any
 
-    environment {
-        // Имя образа для тестов
-        TEST_IMAGE = 'my-tests:latest'
-    }
+       environment {
+           // Имя образа для тестов
+           TEST_IMAGE = 'my-tests:latest'
+       }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                // Забираем код из репозитория
-                git branch: 'main',
-                    url: 'https://github.com/Rail-Khamidullin/crm_uk_playwright'
-            }
-        }
+       stages {
+           stage('Checkout') {
+               steps {
+                   // Забираем код из репозитория
+                   git branch: 'main',
+                       url: 'https://github.com/Rail-Khamidullin/crm_uk_playwright'
+               }
+           }
 
-        stage('Build test image') {
-            steps {
-                script {
-                    // Собираем Docker-образ с тестами
-                    docker.build("${TEST_IMAGE}")
-                }
-            }
-        }
+           stage('Build test image') {
+               steps {
+                   script {
+                       // Собираем Docker-образ с тестами
+                       docker.build("${TEST_IMAGE}")
+                   }
+               }
+           }
 
-        stage('Run tests in Docker') {
-            steps {
-                script {
-                    // Запускаем тесты в контейнере и сохраняем результаты
-                    docker.image("${TEST_IMAGE}").inside(
-                        // Монтируем папку для allure-результатов
-                        "-v ${WORKSPACE}/allure-results:/tests/target/allure-results"
-                    ) {
-                        // Команда для запуска тестов внутри контейнера
-                        sh 'mvn clean test'
-                    }
-                }
-            }
-            post {
-                always {
-                    // Сохраняем отчёты JUnit (если нужны)
-                    junit 'target/surefire-reports/*.xml'
-                }
-            }
-        }
-    }
+           stage('Run tests in Docker') {
+               steps {
+                   script {
+                       // Запускаем тесты в контейнере с правильными правами
+                       docker.image("${TEST_IMAGE}").inside(
+                           """
+                           -v ${WORKSPACE}/allure-results:/tests/target/allure-results
+                           -v $HOME/.m2:/root/.m2
+                           -u root:root
+                           """
+                       ) {
+                           sh '''
+                               # Создаём папку для Maven репозитория с правильными правами
+                               mkdir -p /root/.m2/repository
+                               chmod -R 777 /root/.m2
 
-    post {
-        always {
-            // Генерируем Allure отчёт
-            allure includeProperties: false,
-                  results: [[path: 'allure-results']]
-        }
-    }
+                               # Запускаем тесты
+                               mvn clean test
+                           '''
+                       }
+                   }
+               }
+               post {
+                   always {
+                       // Сохраняем отчёты JUnit
+                       junit 'target/surefire-reports/*.xml'
+
+                       // Сохраняем Allure результаты как артефакты (на всякий случай)
+                       archiveArtifacts artifacts: 'allure-results/**', fingerprint: true
+                   }
+               }
+           }
+       }
+
+       post {
+           always {
+               // Генерируем Allure отчёт
+               allure includeProperties: false,
+                     results: [[path: 'allure-results']]
+           }
+
+           failure {
+               echo '❌ Тесты упали! Проверьте логи.'
+           }
+
+           success {
+               echo '✅ Тесты успешно выполнены!'
+           }
+       }
 }
