@@ -1,0 +1,57 @@
+// jenkins/Jenkinsfile
+pipeline {
+    agent any
+
+    environment {
+        // Имя образа для тестов
+        TEST_IMAGE = 'my-tests:latest'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Забираем код из репозитория
+                git branch: 'main',
+                    url: 'https://github.com/Rail-Khamidullin/crm_uk_playwright'
+            }
+        }
+
+        stage('Build test image') {
+            steps {
+                script {
+                    // Собираем Docker-образ с тестами
+                    docker.build("${TEST_IMAGE}")
+                }
+            }
+        }
+
+        stage('Run tests in Docker') {
+            steps {
+                script {
+                    // Запускаем тесты в контейнере и сохраняем результаты
+                    docker.image("${TEST_IMAGE}").inside(
+                        // Монтируем папку для allure-результатов
+                        "-v ${WORKSPACE}/allure-results:/tests/target/allure-results"
+                    ) {
+                        // Команда для запуска тестов внутри контейнера
+                        sh 'mvn clean test'
+                    }
+                }
+            }
+            post {
+                always {
+                    // Сохраняем отчёты JUnit (если нужны)
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Генерируем Allure отчёт
+            allure includeProperties: false,
+                  results: [[path: 'allure-results']]
+        }
+    }
+}

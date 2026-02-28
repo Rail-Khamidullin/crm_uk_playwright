@@ -2,6 +2,7 @@ package com.tests;
 
 import com.pages.LoginPage;
 import com.pages.ServicesPage;
+import jdk.jfr.Description;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ServicesTest extends BaseTest {
 
     @Test
-    @DisplayName("Проверка отображение блока 'Услуги'")
+    @DisplayName("Открытие блока 'Услуги'")
+    @Description("Проверка отображение блока 'Услуги'")
     public void testServices() {
         // Создаем объект страницы авторизации
         LoginPage loginPage = new LoginPage(page);
