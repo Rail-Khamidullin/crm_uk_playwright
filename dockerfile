@@ -1,18 +1,5 @@
-# Используем официальный образ Playwright с Maven
-FROM maven:3.9.9-eclipse-temurin-21-alpine
-
-# Устанавливаем необходимые зависимости для Playwright
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    && apk add --no-cache --virtual .build-deps \
-    udev \
-    ttf-opensans \
-    && rm -rf /var/cache/apk/*
+# Используем официальный образ Playwright для Java
+FROM mcr.microsoft.com/playwright/java:v1.48.0-jammy
 
 WORKDIR /tests
 
@@ -20,8 +7,11 @@ WORKDIR /tests
 COPY pom.xml .
 COPY src ./src
 
-# Устанавливаем Playwright браузеры
-RUN mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install chromium"
+# Скачиваем зависимости Maven
+RUN mvn dependency:go-offline
 
-# Команда для запуска тестов
+# Браузеры уже предустановлены в образе!
+# Не нужно ничего дополнительно устанавливать
+
+# Запускаем тесты
 CMD ["mvn", "clean", "test"]
