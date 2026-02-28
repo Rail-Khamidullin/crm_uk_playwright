@@ -15,15 +15,6 @@ public abstract class BaseTest {
     public void beforeAll() {
         // Создаем менеджер браузера один раз для всех тестов
         browserManager = new BrowserManager();
-
-        // Дополнительные настройки для запуска в Docker
-        setupBrowserForDocker();
-    }
-
-    private void setupBrowserForDocker() {
-        // Получаем доступ к Playwright и браузеру через рефлексию или добавляем метод в BrowserManager
-        // Пока просто выведем информацию
-        System.out.println("🔧 Running in Docker mode - browser should be headless");
     }
 
     @BeforeEach
